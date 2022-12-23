@@ -1,8 +1,9 @@
 import os
-from random import randint, choice
+from random import randint, choice, random
 import re
 import urllib.request
-from flask_sqlalchemy import SQLAlchemy
+from time import sleep
+from sqlalchemy import create_engine, text
 
 
 class SearchTermGenerator():
@@ -62,6 +63,8 @@ class Scraper:
     def __init__(self):
         self.term_generator = SearchTermGenerator()
         self.search_url = 'https://www.youtube.com/results?search_query='
+        self.engine = create_engine( os.environ['POSTGRES_URI'], 
+                                    echo=True, future=True)
 
     def get_term(self):
         return self.term_generator.get_term()
@@ -74,8 +77,22 @@ class Scraper:
         return html
 
     def extract_vid_ids(self, html):
-        urls = re.findall(r'watch\?v=[a-zA-Z0-9_]{11}', str(html))
-        urls = list(set(urls))
-        urls = [ url.split('watch?v=')[-1] for url in urls ]
-        return urls
- 
+        video_ids = re.findall(r'watch\?v=[a-zA-Z0-9_]{11}', str(html))
+        video_ids = list(set(video_ids))
+        video_ids = [ vid.split('watch?v=')[-1] for vid in video_ids ]
+        return video_ids
+
+    def insert_video_id(self, video_id):
+        with self.engine.connect() as conn:
+            conn.execute( text("INSERT INTO videos \
+                      VALUES ('{}');".format(video_id)) )
+            conn.commit()
+
+    def scrape(self):
+        while(1):
+            html = self.get_page( self.get_term() )
+            ids = self.extract_vid_ids( html )
+            vid_id = choice(ids)
+            self.insert_video_id( vid_id )
+            print(vid_id)
+            sleep( 4 + random() * 4)
