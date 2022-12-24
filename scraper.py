@@ -90,9 +90,13 @@ class Scraper:
 
     def scrape(self):
         while(1):
-            html = self.get_page( self.get_term() )
+            term = self.get_term()
+            html = self.get_page( term )
             ids = self.extract_vid_ids( html )
+            if ids == []:
+                print("{} ~> nada".format(term))
+                continue
             vid_id = choice(ids)
             self.insert_video_id( vid_id )
-            print(vid_id)
+            print("{} ~> {}".format(term, vid_id))
             sleep( 4 + random() * 4)
